@@ -17,8 +17,9 @@ OAUTH_URL = 'https://api.vk.com/method/'
 class User():
 
 
-    def __init__(self, token):
-        self.token = token
+    def __init__(self, vktoken, yatoken):
+        self.vktoken = vktoken
+        self.yatoken = yatoken
 
     def download_vk(self):
         count = 5
@@ -42,7 +43,7 @@ class User():
 
         response = requests.get('https://api.vk.com/method/photos.get',
                             params={
-                            'access_token': self.token,
+                            'access_token': self.vktoken,
                                 'v': 5.126,
                                 'album_id': 'profile',
                                 'rev': '1',
@@ -52,7 +53,7 @@ class User():
                             }
                             )
 
-        # pprint(response.json())
+
         list_photos = response.json()['response']['items']
 
         final_list = []
@@ -74,8 +75,6 @@ class User():
                     time.sleep(0.01)
             final_list.append(dict(likes = items["likes"]["count"], height = best_height, best_width = best_width, url = best_url, timestamp= timestamp ))
 
-        # pprint(final_list)
-
         print()
         print('----Создание временной директории----')
         print('----Директория Temp создана----')
@@ -84,6 +83,7 @@ class User():
             os.mkdir('temp')
 
         os.chdir('temp')
+
         for items in final_list:
             path = (f'{items["likes"]}.jpg')
 
@@ -106,9 +106,9 @@ class User():
             f.write(final_json)
 
         print()
-        print()
-        token_yd = input('Введите OAuth токен: ')
-        print()
+        # print()
+        # token_yd = input('Введите OAuth токен: ')
+        # print()
         print('----начинаю выгрузку на Yandex диск----')
         print()
 
@@ -118,7 +118,7 @@ class User():
         url_path = 'Vk_Archive'
 
         response_put = requests.put('https://cloud-api.yandex.net/v1/disk/resources',
-                                    headers={'Authorization': token_yd}, params={'path': url_path})
+                                    headers={'Authorization': self.yatoken}, params={'path': url_path})
 
         with alive_bar(len(final_list)) as bar:
             for items in final_list:
@@ -127,9 +127,7 @@ class User():
                 final_urlpath = items["path"]
 
                 response = requests.get('https://cloud-api.yandex.net/v1/disk/resources/upload',
-                                        headers={'Authorization': token_yd}, params={'path': final_urlpath})
-                # print(response.status_code)
-                # pprint(response.json())
+                                        headers={'Authorization': self.yatoken}, params={'path': final_urlpath})
                 upload_url = response.json()['href']
 
                 with open(items['path'], 'rb') as f:
@@ -156,24 +154,78 @@ def intro():
     print()
     print("      v. 1.1                                                    by Alex Mikhailishin")
     print()
-    print("_________________________________Список комманд_____________________________________")
+    print("____________________________________________________________________________________")
 
 
 
 def token_config():
-    while True:
+
+    account_info = dict()
+    global yatoken
+    global vktoken
+
+
+    def new_account():
+        yatoken = ''
+        vktoken = ''
+
         while True:
-            global NAME
-            print()
-            NAME = input('Ввведите ваше имя (латиница): ')
-            print()
-            if NAME != '':
-                break
-        TOKEN = input('Ввведите ваше токен: ')
-        if TOKEN != '':
+            while True:
+                global NAME
+                print()
+                NAME = input('Ввведите ваше имя (латиница): ')
+                print()
+                if NAME != '':
+                    break
+            while vktoken == '':
+                vktoken = input('Ввведите ваш Vk токен: ')
+            while yatoken == '':
+                yatoken = input('Введите OAuth yandex токен: ')
+                print()
             break
-    global user
-    user = User(TOKEN)
+
+        global user
+        user = User(vktoken, yatoken)
+
+        account_info = {'name': NAME, 'vk': vktoken, 'ya': yatoken}
+
+        with open('account.json', 'w', encoding='utf-8') as f:
+            json.dump(account_info, f)
+
+
+
+    if os.path.exists("account.json"):
+        with open("account.json") as f:
+            account_info = json.load(f)
+
+        while True:
+            print()
+            answer = input(f"Добрый день. Желаете зайти под пользователем {account_info['name']}? 1 - да, 2 - создать нового: ")
+            if answer == '1':
+                yatoken = account_info['ya']
+                vktoken = account_info['vk']
+                NAME = account_info['name']
+                global user
+                user = User(vktoken, yatoken)
+
+                break
+            elif answer == '2':
+                os.remove("account.json")
+                new_account()
+                break
+            else:
+                print()
+                print("Попробуйте снова.")
+
+
+
+
+
+
+    else:
+        new_account()
+
+
 
 
 
@@ -181,6 +233,8 @@ def token_config():
 def commands():
     print()
     print(f"Добро пожаловать, {NAME}!")
+    print()
+    print("_________________________________Список комманд_____________________________________")
     print()
     print("--1-- выгрузить последние аватары вк")
     # print("--2-- Скачать фото из выбранного альбома")
