@@ -12,8 +12,6 @@ NAME = ''
 OAUTH_URL = 'https://api.vk.com/method/'
 
 
-
-
 class User():
 
 
@@ -25,10 +23,10 @@ class User():
         count = 5
         count_check = False
 
-        while count_check == False:
+        while not count_check:
             print()
             count = input("Введите количество фотографий для сохранения (по умолчанию - 5, оставить пустым): ")
-            if count.isdigit() == True:
+            if count.isdigit():
                 count = int(count)
                 if count > 0:
                     count_check = True
@@ -76,27 +74,24 @@ class User():
             final_list.append(dict(likes = items["likes"]["count"], height = best_height, best_width = best_width, url = best_url, timestamp= timestamp ))
 
         print()
-        print('----Создание временной директории----')
-        print('----Директория Temp создана----')
         print('----Выполняется загрузка файлов----')
-        if os.path.exists('temp') != True:
-            os.mkdir('temp')
 
-        os.chdir('temp')
+        name_list = []
+        folder_name = str(datetime.date.today())
+
+        # print( folder_name)
+        # requests.put('https://cloud-api.yandex.net/v1/disk/resources',
+                     # headers={'Authorization': self.yatoken}, params={'path': folder_name})
 
         for items in final_list:
-            path = (f'{items["likes"]}.jpg')
+                if str(items["likes"]) in name_list:
+                    print(f'файл с именем {items["likes"]} существует, генерация нового имени {items["likes"]}_{items["timestamp"]}')
+                    items["name"] = str(f'{items["likes"]}_{items["timestamp"]}')
 
-            if os.path.exists(path):
-                print(f'файл с именем {path} существует, генерация нового имени {items["likes"]}_{items["timestamp"]}.jpg')
-                path = (f'{items["likes"]}_{items["timestamp"]}.jpg')
-            else:
-                print(path)
-            items['path'] = path
-            with open(path, 'wb') as f:
-                image = requests.get(items['url'])
-                f.write(image.content)
-
+                else:
+                    print(f'Создан файл с именем {items["likes"]}')
+                    items["name"] = str(items["likes"])
+                    name_list.append(items["name"])
         print()
         print('----Создание локального JSON словаря----')
         print('----Словарь создан----')
@@ -106,41 +101,19 @@ class User():
             f.write(final_json)
 
         print()
-        # print()
-        # token_yd = input('Введите OAuth токен: ')
-        # print()
         print('----начинаю выгрузку на Yandex диск----')
         print()
 
-
-
-
-        url_path = 'Vk_Archive'
-
-        response_put = requests.put('https://cloud-api.yandex.net/v1/disk/resources',
-                                    headers={'Authorization': self.yatoken}, params={'path': url_path})
-
         with alive_bar(len(final_list)) as bar:
             for items in final_list:
-
-                final_urlpath = (f'{url_path}_{items}["path"]')
-                final_urlpath = items["path"]
-
-                response = requests.get('https://cloud-api.yandex.net/v1/disk/resources/upload',
-                                        headers={'Authorization': self.yatoken}, params={'path': final_urlpath})
-                upload_url = response.json()['href']
-
-                with open(items['path'], 'rb') as f:
-                    resp = requests.put(upload_url, files={'file': f})
+                requests.post(f'https://cloud-api.yandex.net/v1/disk/resources/upload/',
+                                    headers={'Authorization': self.yatoken}, params={'path': items["name"],
+                                                                                     'url' : items['url']})
                 print()
                 bar()
                 time.sleep(1)
 
         print('загружено')
-
-
-
-
 
 
 
@@ -204,6 +177,7 @@ def token_config():
             if answer == '1':
                 yatoken = account_info['ya']
                 vktoken = account_info['vk']
+                global NAME
                 NAME = account_info['name']
                 global user
                 user = User(vktoken, yatoken)
@@ -218,16 +192,8 @@ def token_config():
                 print("Попробуйте снова.")
 
 
-
-
-
-
     else:
         new_account()
-
-
-
-
 
 
 def commands():
@@ -261,13 +227,7 @@ def interface():
             print("Комманды не существует")
 
 
-
-
-
-
 def main():
-
-
 
     intro()
     token_config()
@@ -275,28 +235,4 @@ def main():
     interface()
 
 
-
-
-
-
 main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
